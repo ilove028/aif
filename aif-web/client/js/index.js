@@ -1,10 +1,24 @@
 (function() {
   const ws = new WebSocket('ws://localhost:7001');
+  const componentManager = {
+    invoke(context, name, parameters) {
+      remote.invoke('actionA', ['9527']);
+    }
+  };
+  Vue.use(function (Vue) {
+    const origin = Vue.prototype.$emit;
+    Vue.prototype.$emit = function(name, ...args) {
+      componentManager.invoke(this, name, ...args);
+      return origin.apply(this, [name].concat(args));
+    }
+  });
+
   const vm = new Vue({
     el: '#app',
     template:
       `
         <div id="app">
+          <button @click="$emit('refresh')"></button>
           <ul>
             <li v-for="i of list" :key="i.id">
               {{ i.name }}
@@ -62,7 +76,6 @@
 
   ws.addEventListener('open', function() {
     console.log('open');
-    remote.invoke('actionA', ['9527']);
   });
 
   ws.addEventListener('close', function() {
