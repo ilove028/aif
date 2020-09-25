@@ -1,10 +1,36 @@
 (function() {
   const ws = new WebSocket('ws://localhost:7001');
-
+  const vm = new Vue({
+    el: '#app',
+    template:
+      `
+        <div id="app">
+          <ul>
+            <li v-for="i of list" :key="i.id">
+              {{ i.name }}
+            </li>
+          </ul>
+        </div>
+      `,
+    data: { list: [] },
+    methods: {
+      setData(list) {
+        this.list = list;
+      }
+    }
+  });
   const global = {
     math: {
       add(...args) {
         return args.reduce((pre, current) => pre + current, 0);
+      }
+    },
+    component: {
+      invoke(id, name, parameters) {
+        const fn = vm[name];
+        if (fn) {
+          fn.apply(null, parameters);
+        }
       }
     }
   }
@@ -16,6 +42,9 @@
       if (fun) {
         return fun.apply(context, parameters);
       }
+    },
+    async invoke(path, parameters) {
+      ws.send(JSON.stringify({ id: 2, path, parameters }));
     }
   };
 
@@ -33,6 +62,7 @@
 
   ws.addEventListener('open', function() {
     console.log('open');
+    remote.invoke('actionA', ['9527']);
   });
 
   ws.addEventListener('close', function() {

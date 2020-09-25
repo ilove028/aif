@@ -2,6 +2,8 @@ const Koa = require('koa');
 const WebSocketServer = require('websocket').server;
 const connectManager = require('./connect-manager');
 const remote = require('./remote');
+const Controller = require('./controller');
+const controller = new Controller();
 
 const COOKIE_NAME = 'session';
 const PORT = 7001;
@@ -37,8 +39,14 @@ wsServer.on('request', function(request) {
   console.log((new Date()) + ' Connection accepted.');
   connection.on('message', function(message) {
       if (message.type === 'utf8') {
-          const data = JSON.parse(message.utf8Data);
-          remote.returnInvoke(data.id, data.result);
+          try {
+            const data = JSON.parse(message.utf8Data);
+            if (data.path) {
+              controller[data.path].apply({ connectId }, data.parameters);
+            } else {
+              remote.returnInvoke(data.id, data.result);
+            }
+          } catch (err) {}
       }
       else if (message.type === 'binary') {
           console.log('Received Binary Message of ' + message.binaryData.length + ' bytes');
