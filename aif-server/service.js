@@ -14,7 +14,7 @@ module.exports = {
           id: 3,
           name: '发电'
         }
-      ]);
+      ].filter(i => i.id === iid));
     });
   }
 }

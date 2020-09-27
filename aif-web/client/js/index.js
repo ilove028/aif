@@ -1,8 +1,51 @@
 (function() {
   const ws = new WebSocket('ws://localhost:7001');
+  const config = {
+    triggerAction: {
+      refresh: [{
+        path: 'actionA',
+        parameters: [
+          [
+            ['0', null]
+          ],
+          [
+            ['1', 'page.index']
+          ]
+        ]
+      }]
+    }
+  };
+
+  function mapParameters(parameters, mapper) {
+    return mapper.map((item) => {
+      return toParameter(parameters, item);
+    });
+  }
+
+  function toParameter(parameters, map) {
+    let isFinished = false;
+    return map.reduce((pre, [from, to]) => {
+      if (isFinished) {
+        return pre;
+      } else {
+        const value = get(parameters, from);
+        if (to) {
+          return set(pre, to, value);
+        } else {
+          isFinished = true;
+          return value;
+        }
+      }
+    }, {});
+  } 
+
   const componentManager = {
-    invoke(context, name, parameters) {
-      remote.invoke('actionA', ['9527']);
+    invoke(context, name, ...parameters) {
+      // remote.invoke('actionA', ['9527']);
+      const actions = config.triggerAction[name];
+      actions.forEach((action) => {
+        remote.invoke(action.path, mapParameters(parameters, action.parameters))
+      })
     }
   };
   Vue.use(function (Vue) {
@@ -18,7 +61,9 @@
     template:
       `
         <div id="app">
-          <button @click="$emit('refresh')"></button>
+          <button @click="$emit('refresh', 1, 'a')">1</button>
+          <button @click="$emit('refresh', 2)">2</button>
+          <button @click="$emit('refresh', 3)">3</button>
           <ul>
             <li v-for="i of list" :key="i.id">
               {{ i.name }}
@@ -62,9 +107,9 @@
     }
   };
 
-  function get(object, path) {
+  function get(object = {}, path) {
     const paths = path.split('.');
-    for(let p of paths) {
+    for(const p of paths) {
       if (object.hasOwnProperty(p)) {
         object = object[p];
       } else {
@@ -72,6 +117,26 @@
       }
     }
     return object;
+  }
+
+  function set(object = {}, path, value) {
+    const result = object;
+    const paths = path.split('.');
+    for (let i = 0; i < paths.length; i++) {
+      const p = paths[i];
+      if (i === paths.length - 1) {
+        object[p] = value;
+      } else {
+        const pre = object[p];
+        const type = typeof pre;
+        if (type === 'string' || type === 'number' || type === 'boolean' || type === 'undefined') {
+          object = object[p] = {};
+        } else {
+          object = object[p];
+        }
+      }
+    }
+    return result;
   }
 
   ws.addEventListener('open', function() {
